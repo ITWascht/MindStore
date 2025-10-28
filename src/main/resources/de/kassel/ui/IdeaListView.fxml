@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<VBox xmlns="http://javafx.com/javafx/24" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="de.kassel.ui.IdeaListController" spacing="6">
+    <HBox spacing="6">
+        <TextField fx:id="filterField" promptText="Suche…"/>
+        <Button text="Filter anwenden" onAction="#onApplyFilter"/>
+    </HBox>
+    <TableView fx:id="table" prefHeight="400">
+        <columns>
+            <TableColumn fx:id="colTitle" text="Titel" prefWidth="240"/>
+            <TableColumn fx:id="colPriority" text="Prio" prefWidth="80"/>
+            <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+        </columns>
+    </TableView>
+</VBox>

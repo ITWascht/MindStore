@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane fx:id="root" xmlns="http://javafx.com/javafx/24"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="de.kassel.ui.MainController">
+
+    <!-- Top: App-Bar -->
+    <top>
+        <ToolBar>
+            <Button text="✚ Neue Idee" onAction="#onNewIdea"/>
+            <Separator orientation="VERTICAL"/>
+            <TextField fx:id="searchField" promptText="Suche (text:, tag:, prio: …)"/>
+            <Button text="Suchen" onAction="#onSearch"/>
+            <Pane HBox.hgrow="ALWAYS"/>
+            <Button text="⚙ Einstellungen" onAction="#onOpenSettings"/>
+        </ToolBar>
+    </top>
+
+    <!-- Left: Navigation -->
+    <left>
+        <VBox spacing="6" style="-fx-background-color: -fx-base;" BorderPane.alignment="TOP_LEFT">
+            <children>
+                <Label text="Navigation" style="-fx-font-weight: bold; -fx-padding: 8 8 0 8;"/>
+                <ListView fx:id="navList" prefWidth="180.0"/>
+                <TitledPane text="Tags" expanded="true">
+                    <content>
+                        <ListView fx:id="tagList" />
+                    </content>
+                </TitledPane>
+            </children>
+            <padding><Insets top="6" right="6" bottom="6" left="6"/></padding>
+        </VBox>
+    </left>
+
+    <!-- Center: Content-Placeholder -->
+    <center>
+        <StackPane fx:id="contentPane">
+            <Label text="Willkommen in MindStore 👋" />
+        </StackPane>
+    </center>
+
+    <!-- Statusleiste -->
+    <bottom>
+        <HBox spacing="10" style="-fx-padding: 6;">
+            <Label fx:id="statusLabel" text="Bereit."/>
+        </HBox>
+    </bottom>
+</BorderPane>
