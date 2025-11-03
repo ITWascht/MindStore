@@ -1,79 +1,343 @@
 package de.kassel.ui;
 
+import de.kassel.db.IdeaRepository;
+import de.kassel.db.TagRepository;
+import de.kassel.model.Idea;
+import de.kassel.model.IdeaRow;
+
+import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
-import de.kassel.db.IdeaRepository;
-import de.kassel.model.Idea;
-import javafx.collections.FXCollections;
+import javafx.scene.input.MouseButton;
+
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class IdeaListController {
+
     @FXML private TextField filterField;
+
     @FXML private TableView<IdeaRow> table;
-    @FXML private TableColumn<IdeaRow, String> colTitle;
-    @FXML private TableColumn<IdeaRow, Integer> colPriority;
-    @FXML private TableColumn<IdeaRow, String> colStatus;
+    @FXML private TableColumn<IdeaRow, String>  colTitle;
+    @FXML private TableColumn<IdeaRow, Number>  colPriority;
+    @FXML private TableColumn<IdeaRow, String>  colStatus;
+    @FXML private TableColumn<IdeaRow, String>  colTags;
+
     private final IdeaRepository repo = new IdeaRepository();
     private String statusFilter = null;
 
+    // Ungefilterte Masterliste (wird in reload() befüllt)
+    private final javafx.collections.ObservableList<IdeaRow> masterRows =
+            javafx.collections.FXCollections.observableArrayList();
+
     @FXML
-    public void initialize(){
+    public void initialize() {
         colTitle.setCellValueFactory(new PropertyValueFactory<>("title"));
         colPriority.setCellValueFactory(new PropertyValueFactory<>("priority"));
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
-
+        if (colTags != null) {
+            colTags.setCellValueFactory(new PropertyValueFactory<>("tags"));
+        }
         reload();
-
-//        table.setItems(FXCollections.observableArrayList(
-//                new IdeaRow("SQLite integrieren",1,"inbox"),
-//                new IdeaRow("FXML laden",2,"doing"),
-//                new IdeaRow("UI-Theming",3,"draft")
-//        ));
+        table.setOnKeyPressed(evt -> {
+            switch (evt.getCode()) {
+                case ENTER -> {
+                    editSelectedRow();
+                    evt.consume();
+                }
+                case DELETE -> {
+                    deleteSelectedRow();
+                    evt.consume();
+                }
+                default -> { /* nichts */ }
+            }
+        });
     }
 
     public void setStatusFilter(String status) {
         this.statusFilter = status;
         reload();
+        setupContextMenu();
     }
 
+    private boolean isTrashView() {
+        return "trash".equalsIgnoreCase(statusFilter);
+    }
+
+
+    /** Lädt Daten aus dem Repo und füllt masterRows; Table zeigt zunächst alles. */
     private void reload() {
-        var ideas = (statusFilter == null || statusFilter.equals("all"))
-                ? repo.findAll()
-                : repo.findByStatus(statusFilter);
+        // 1️⃣ Auswahl je nach Status (inkl. Papierkorb)
+        var ideas =
+                (statusFilter == null || statusFilter.equals("all"))
+                        ? repo.findAll()
+                        : (statusFilter.equals("trash")
+                        ? repo.findTrash()
+                        : repo.findByStatus(statusFilter));
 
-        // Map auf Table-DTO (du kannst auch direkt Idea verwenden und PropertyValueFactory anpassen)
-        var rows = FXCollections.<IdeaRow>observableArrayList();
+        // 2️⃣ Tag-Namen vorbereiten
+        var tagRepo = new TagRepository();
+
+        // 3️⃣ Alte Liste löschen und neu füllen
+        masterRows.clear();
         for (Idea i : ideas) {
-            rows.add(new IdeaRow(i.getTitle(), i.getPriority(), i.getStatus()));
+            String tagNames = tagRepo.findTagsForIdea(i.id()).stream()
+                    .map(de.kassel.model.Tag::name)
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .collect(Collectors.joining(", "));
+
+            var row = new IdeaRow(
+                    i.id(),
+                    i.title(),
+                    i.priority().level(),
+                    i.status().db()
+            );
+            row.setTags(tagNames);
+            masterRows.add(row);
         }
-        table.setItems(rows);
+
+        // 4️⃣ Anzeigen (alle sichtbar, Filter wird von MainController später angewendet)
+        table.setItems(FXCollections.observableArrayList(masterRows));
     }
 
-    private void applyStatusFilter(){
-        if (statusFilter == null || statusFilter.equals("all")) return;
-        table.getItems().removeIf(r-> !r.getStatus().equalsIgnoreCase(statusFilter));
-    }
-
+    /** Wird vom FXML (Suchfeld-Button) genutzt – filtert nur nach Text. */
     @FXML
-    private void onApplyFilter(){
-        //erstmal Dummy
-    table.getItems().removeIf(r->
-            filterField.getText()!=null && !filterField.getText().isBlank() && !r.getTitle().toLowerCase().contains(filterField.getText().toLowerCase())
-    );
+    private void onApplyFilter() {
+        applyFilter(filterField.getText(), java.util.Collections.emptyList());
     }
 
-    public static class IdeaRow{
-        private final String title;
-        private final Integer priority;
-        private final String status;
-        public IdeaRow(String title, Integer priority,String status){
-            this.title = title;
-            this.priority = priority;
-            this.status = status;
+    /** Extern vom MainController aufrufbar: Text + ausgewählte Tags anwenden. */
+    public void applyFilter(String query, java.util.List<String> selectedTags) {
+        String q = (query == null) ? "" : query.trim().toLowerCase();
+        boolean hasQuery = !q.isBlank();
+
+        var tagNeedles = (selectedTags == null)
+                ? java.util.List.<String>of()
+                : selectedTags.stream()
+                .filter(s -> s != null && !s.isBlank())
+                .map(String::toLowerCase)
+                .toList();
+        boolean hasTags = !tagNeedles.isEmpty();
+
+        var filtered = masterRows.stream().filter(r -> {
+            boolean matchesQuery = true;
+            if (hasQuery) {
+                String title  = (r.getTitle()  == null) ? "" : r.getTitle().toLowerCase();
+                String status = (r.getStatus() == null) ? "" : r.getStatus().toLowerCase();
+                String tags   = (r.getTags()   == null) ? "" : r.getTags().toLowerCase();
+                String prio   = String.valueOf(r.getPriority());
+
+                matchesQuery = title.contains(q) || status.contains(q) || tags.contains(q)
+                        || ("p" + prio).equals(q) || prio.equals(q);
+            }
+
+            boolean matchesTags = true;
+            if (hasTags) {
+                String tags = (r.getTags() == null) ? "" : r.getTags().toLowerCase();
+                // ANY-match: trifft, wenn irgendein ausgewählter Tag vorkommt
+                matchesTags = tagNeedles.stream().anyMatch(tags::contains);
+                // Für ALL-match stattdessen:
+                // matchesTags = tagNeedles.stream().allMatch(tags::contains);
+            }
+
+            return matchesQuery && matchesTags;
+        }).collect(Collectors.toCollection(FXCollections::observableArrayList));
+
+        table.setItems(filtered);
+    }
+
+    // -------- Kontextmenü + Doppelklick --------
+    private void setupContextMenu() {
+        final ContextMenu menu = new ContextMenu();
+
+        if (isTrashView()) {
+            // ---- Menü NUR für Papierkorb ----
+            MenuItem restore = new MenuItem("Wiederherstellen");
+            restore.setOnAction(e -> {
+                var sel = table.getSelectionModel().getSelectedItem();
+                if (sel == null) return;
+                repo.restore(sel.getId());      // ← muss in IdeaRepository existieren
+                reload();
+            });
+
+            MenuItem deleteForever = new MenuItem("Endgültig löschen…");
+            deleteForever.setOnAction(e -> {
+                var sel = table.getSelectionModel().getSelectedItem();
+                if (sel == null) return;
+
+                var alert = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Eintrag endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+                        ButtonType.OK, ButtonType.CANCEL);
+                alert.setHeaderText(null);
+                alert.showAndWait().ifPresent(bt -> {
+                    if (bt == ButtonType.OK) {
+                        repo.deletePermanent(sel.getId()); // ← harte Löschung
+                        reload();
+                    }
+                });
+            });
+
+            menu.getItems().setAll(restore, new SeparatorMenuItem(), deleteForever);
+
+        } else {
+            // ---- Menü für alle normalen Ansichten ----
+            MenuItem edit = new MenuItem("Bearbeiten…");
+            edit.setOnAction(evt -> editSelectedRow());
+
+            Menu editStatus = new Menu("Status ändern");
+            for (String s : java.util.List.of("inbox", "draft", "doing", "done", "archived")) {
+                MenuItem item = new MenuItem(s);
+                item.setOnAction(ev -> {
+                    var sel = table.getSelectionModel().getSelectedItem();
+                    if (sel == null) return;
+                    repo.updateStatus(sel.getId(), s);
+                    reload();
+                });
+                editStatus.getItems().add(item);
+            }
+
+            MenuItem moveToTrash = new MenuItem("In Papierkorb verschieben…");
+            moveToTrash.setOnAction(e -> {
+                var sel = table.getSelectionModel().getSelectedItem();
+                if (sel == null) return;
+
+                var alert = new Alert(Alert.AlertType.CONFIRMATION,
+                        "Eintrag wirklich in den Papierkorb verschieben?",
+                        ButtonType.OK, ButtonType.CANCEL);
+                alert.setHeaderText(null);
+                alert.showAndWait().ifPresent(bt -> {
+                    if (bt == ButtonType.OK) {
+                        repo.moveToTrash(sel.getId());
+                        reload();
+                    }
+                });
+            });
+
+            menu.getItems().setAll(edit, editStatus, new SeparatorMenuItem(), moveToTrash);
         }
-        public String getTitle() {return title;}
-        public Integer getPriority() {return priority;}
-        public String getStatus() {return status;}
+
+        // RowFactory neu setzen, damit das gerade gebaute Menü greift
+        table.setRowFactory(tv -> {
+            var r = new TableRow<IdeaRow>();
+            r.contextMenuProperty().bind(
+                    Bindings.when(r.emptyProperty())
+                            .then((ContextMenu) null)
+                            .otherwise(menu)
+            );
+            // Doppelklick-Edit in der Trash-Ansicht deaktivieren
+            r.setOnMouseClicked(event -> {
+                if (event.getButton() == MouseButton.PRIMARY
+                        && event.getClickCount() == 2
+                        && !r.isEmpty()
+                        && !isTrashView()) {
+                    editSelectedRow();
+                    event.consume();
+                }
+            });
+            return r;
+        });
+    }
+
+
+    private void editSelectedRow() {
+        var row = table.getSelectionModel().getSelectedItem();
+        if (row == null) return;
+
+        var opt = repo.findById(row.getId());
+        if (opt.isEmpty()) {
+            new Alert(Alert.AlertType.ERROR,
+                    "Eintrag nicht gefunden (ID: " + row.getId() + ").").showAndWait();
+            return;
+        }
+        openEditDialog(opt.get());
+    }
+    private void deleteSelectedRow() {
+        var sel = table.getSelectionModel().getSelectedItem();
+        if (sel == null) return;
+
+        var alert = new Alert(Alert.AlertType.CONFIRMATION,
+                "Eintrag wirklich löschen?", ButtonType.OK, ButtonType.CANCEL);
+        alert.setHeaderText(null);
+        alert.showAndWait().ifPresent(bt -> {
+            if (bt == ButtonType.OK) {
+                repo.delete(sel.getId());
+                reload();
+            }
+        });
+    }
+
+    private void openEditDialog(de.kassel.model.Idea idea) {
+        try {
+            var url = MainApp.class.getResource("/de/kassel/ui/NewIdeaDialog.fxml");
+            var loader = new FXMLLoader(Objects.requireNonNull(url));
+            DialogPane content = loader.load();   // Root ist <DialogPane>
+
+            var ctrl = loader.getController();
+            if (ctrl instanceof NewIdeaDialogController dlg) {
+                dlg.setInitial(idea);
+
+                Dialog<de.kassel.model.Idea> dialog = new Dialog<>();
+                dialog.setTitle("Idee bearbeiten");
+                dialog.setDialogPane(content);
+                dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+                Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+                dlg.bindOkDisable(okBtn);
+
+                dialog.setResultConverter(bt ->
+                        bt == ButtonType.OK ? dlg.buildUpdatedOrShowError(idea) : null
+                );
+
+                dialog.showAndWait().ifPresent(updated -> {
+                    repo.update(updated);
+                    Long when = dlg.getReminderEpochOrNull();
+                    var remRepo = new de.kassel.db.ReminderRepository();
+                    if (when != null) {
+                        remRepo.upsertForIdea(updated.id(), when, updated.title());
+                    } else {
+                        remRepo.deleteForIdea(updated.id());
+                    }
+                    reload();
+                    // Nach dem Speichern der Idea auch die Tags sichern
+                    var selectedTags = dlg.getSelectedTagNames();              // List<String> der Namen
+                    new de.kassel.db.TagRepository().replaceIdeaTags(updated.id(), selectedTags);
+                    var when1 = dlg.getReminderEpochOrNull();
+                    var rRepo = new de.kassel.db.ReminderRepository();
+                    if (when1 != null) {
+                        rRepo.upsertForIdea(updated.id(), when1, updated.title());
+                    } else {
+                        // Wenn Felder leer: Erinnerung entfernen (optional)
+                        rRepo.deleteForIdea(updated.id());
+                    }
+                    reload();
+                });
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            new Alert(Alert.AlertType.ERROR,
+                    "Fehler beim Öffnen des Bearbeiten-Dialogs: " + ex.getMessage()).showAndWait();
+        }
+    }
+
+    /** Verträgt beide Varianten von findById: Optional<Idea> oder Idea. */
+    @SuppressWarnings("unused")
+    private Idea getIdeaOrNull(long id) {
+        try {
+            Optional<Idea> opt = repo.findById(id);
+            return opt.orElse(null);
+        } catch (NoSuchMethodError | NoClassDefFoundError ignored) {
+        } catch (Throwable t) { }
+        try {
+            return (Idea) IdeaRepository.class
+                    .getMethod("findById", long.class)
+                    .invoke(repo, id);
+        } catch (Exception ex) {
+            return null;
+        }
     }
 }

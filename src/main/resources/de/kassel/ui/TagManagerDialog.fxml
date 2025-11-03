@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<DialogPane xmlns:fx="http://javafx.com/fxml" fx:controller="de.kassel.ui.TagManagerController">
+    <content>
+        <VBox spacing="10">
+            <padding><Insets topRightBottomLeft="12"/></padding>
+
+            <Label text="Tags für die ausgewählte Idee"/>
+
+            <HBox spacing="10">
+                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="Zugewiesene Tags"/>
+                    <ListView fx:id="assignedList" prefHeight="220" />
+                </VBox>
+
+                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                    <Label text="Alle Tags"/>
+                    <ListView fx:id="allList" prefHeight="220" />
+                </VBox>
+            </HBox>
+
+            <HBox spacing="8">
+                <Button text="➕ Hinzufügen" onAction="#onAddExisting"/>
+                <Button text="➖ Entfernen"  onAction="#onRemove"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <TextField fx:id="newTagField" promptText="Neuen Tag-Namen eingeben…"/>
+                <Button text="Erstellen &amp; zuweisen" onAction="#onCreateAndAssign"/>
+            </HBox>
+
+            <Label fx:id="errorLabel" style="-fx-text-fill: -fx-danger;"/>
+        </VBox>
+    </content>
+
+    <buttonTypes>
+        <ButtonType fx:constant="CLOSE"/>
+    </buttonTypes>
+</DialogPane>

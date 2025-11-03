@@ -12,6 +12,7 @@
             <TableColumn fx:id="colTitle" text="Titel" prefWidth="240"/>
             <TableColumn fx:id="colPriority" text="Prio" prefWidth="80"/>
             <TableColumn fx:id="colStatus" text="Status" prefWidth="120"/>
+            <TableColumn fx:id="colTags" text="Tags" prefWidth="200"/>
         </columns>
     </TableView>
 </VBox>

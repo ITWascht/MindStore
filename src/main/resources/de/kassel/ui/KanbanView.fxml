@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="de.kassel.ui.KanbanController">
+    <top>
+        <ToolBar>
+            <Label text="Kanban Board"/>
+            <Separator orientation="VERTICAL"/>
+            <Button text="Refresh" onAction="#onRefresh"/>
+        </ToolBar>
+    </top>
+
+    <center>
+        <HBox spacing="12" style="-fx-padding:12;">
+            <children>
+                <VBox fx:id="colInbox"   prefWidth="180" spacing="8"/>
+                <VBox fx:id="colDraft"   prefWidth="180" spacing="8"/>
+                <VBox fx:id="colDoing"   prefWidth="180" spacing="8"/>
+                <VBox fx:id="colDone"    prefWidth="180" spacing="8"/>
+                <VBox fx:id="colArchived" prefWidth="180" spacing="8"/>
+            </children>
+        </HBox>
+    </center>
+</BorderPane>

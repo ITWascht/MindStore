@@ -6,32 +6,41 @@ import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+
 import java.util.Objects;
 
 public class MainApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
-        // DB initialisieren (legt Datei + Schema + Seed an)
-        // 1) DB initialisieren + Diagnose
+        // DB initialisieren + Diagnose
         try (var c = DbManager.getConnection()) {
             System.out.println("SQLite URL = " + c.getMetaData().getURL());
         } catch (Exception e) {
             System.err.println("DB-Init failed: " + e.getClass().getName() + " - " + e.getMessage());
             if (e.getCause() != null) {
-                System.err.println("   Root cause: " + e.getCause().getClass().getName() + " - " + e.getCause().getMessage());
+                System.err.println("Root cause: " + e.getCause().getClass().getName() + " - " + e.getCause().getMessage());
             }
-            throw e; // damit wir den Stacktrace sehen
+            throw e;
         }
 
-        // FXML laden (Parent statt Object!)
         FXMLLoader loader = new FXMLLoader(
-                Objects.requireNonNull(MainApp.class.getResource("/de/kassel/ui/MainView.fxml"))
+                java.util.Objects.requireNonNull(MainApp.class.getResource("/de/kassel/ui/MainView.fxml"))
         );
         Parent root = loader.load();
-
+        MainController controller = loader.getController();
         Scene scene = new Scene(root, 900, 600);
+
+// Ctrl+N → Neue Idee
+        scene.getAccelerators().put(
+                new KeyCodeCombination(KeyCode.N, KeyCombination.CONTROL_DOWN),
+                () -> controller.onNewIdea()
+        );
+
         scene.getStylesheets().add(
-                Objects.requireNonNull(MainApp.class.getResource("/de/kassel/ui/app.css")).toExternalForm()
+                java.util.Objects.requireNonNull(MainApp.class.getResource("/de/kassel/ui/app.css")).toExternalForm()
         );
 
         stage.setTitle("MindStore");
@@ -39,7 +48,5 @@ public class MainApp extends Application {
         stage.show();
     }
 
-    public static void main(String[] args) {
-        launch(args);
-    }
+    public static void main(String[] args) { launch(args); }
 }

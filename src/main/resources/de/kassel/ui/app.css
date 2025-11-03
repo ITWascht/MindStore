@@ -5,3 +5,8 @@
 .tool-bar {
 -fx-padding: 6;
 }
+
+.kanban-header {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
