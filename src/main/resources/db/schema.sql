@@ -60,3 +60,16 @@ FOR EACH ROW
 BEGIN
   UPDATE reminder SET updated_at = strftime('%s','now') WHERE id = NEW.id;
 END;
+
+
+CREATE TABLE IF NOT EXISTS attachment (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  idea_id    INTEGER NOT NULL REFERENCES idea(id) ON DELETE CASCADE,
+  file_name  TEXT NOT NULL,
+  file_path  TEXT NOT NULL,
+  size_bytes INTEGER,
+  mime_type  TEXT,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_attachment_idea_id ON attachment(idea_id);

@@ -77,6 +77,8 @@ public class DbManager {
             // 4) Migrationen / nachträgliche Spalten
 //            ensureReminderNoteColumn(c);  // <- fügt reminder.note hinzu, falls fehlt
             ensureDeletedAtColumn(c);     // <- fügt idea.deleted_at hinzu, falls fehlt
+            ensureAttachmentTable(c);
+            ensureAttachmentFolder();
 
         } catch (Exception e) {
             throw new RuntimeException("Schema initialization failed", e);
@@ -184,6 +186,46 @@ public class DbManager {
         } catch (Exception ignore) {
             // bei sehr alten SQLite-Versionen ggf. kein ALTER – dann Migration später lösen
         }
+    }
+
+    private static void ensureAttachmentTable(Connection c) {
+        try (var st = c.createStatement()) {
+            // Prüfen, ob Tabelle existiert
+            boolean exists = false;
+            try (var rs = st.executeQuery(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='attachment'")) {
+                exists = rs.next();
+            }
+
+            if (!exists) {
+                // Tabelle + Index anlegen
+                st.execute("""
+                CREATE TABLE IF NOT EXISTS attachment (
+                  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                  idea_id    INTEGER NOT NULL REFERENCES idea(id) ON DELETE CASCADE,
+                  file_name  TEXT NOT NULL,
+                  file_path  TEXT NOT NULL,
+                  size_bytes INTEGER,
+                  mime_type  TEXT,
+                  created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+                );
+            """);
+
+                st.execute("""
+                CREATE INDEX IF NOT EXISTS idx_attachment_idea_id ON attachment(idea_id);
+            """);
+            }
+        } catch (Exception e) {
+            // nicht hart failen – nur loggen
+            System.err.println("ensureAttachmentTable failed: " + e.getMessage());
+        }
+    }
+
+    private static void ensureAttachmentFolder() {
+        try {
+            var dir = java.nio.file.Paths.get(System.getProperty("user.home"), ".mindstore", "attachments");
+            java.nio.file.Files.createDirectories(dir);
+        } catch (Exception ignore) { }
     }
 
 

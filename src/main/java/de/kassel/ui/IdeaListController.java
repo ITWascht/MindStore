@@ -13,6 +13,9 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.input.MouseButton;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -289,12 +292,17 @@ public class IdeaListController {
                 Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
                 dlg.bindOkDisable(okBtn);
 
-                dialog.setResultConverter(bt ->
-                        bt == ButtonType.OK ? dlg.buildUpdatedOrShowError(idea) : null
-                );
+                dialog.setResultConverter(bt -> bt == ButtonType.OK ? dlg.buildUpdatedOrShowError(idea) : null);
 
                 dialog.showAndWait().ifPresent(updated -> {
+                    // 1) Idee speichern
                     repo.update(updated);
+
+                    // 2) Tags sichern
+                    var selectedTags = dlg.getSelectedTagNames();
+                    new de.kassel.db.TagRepository().replaceIdeaTags(updated.id(), selectedTags);
+
+                    // 3) Reminder upsert/entfernen
                     Long when = dlg.getReminderEpochOrNull();
                     var remRepo = new de.kassel.db.ReminderRepository();
                     if (when != null) {
@@ -302,18 +310,23 @@ public class IdeaListController {
                     } else {
                         remRepo.deleteForIdea(updated.id());
                     }
-                    reload();
-                    // Nach dem Speichern der Idea auch die Tags sichern
-                    var selectedTags = dlg.getSelectedTagNames();              // List<String> der Namen
-                    new de.kassel.db.TagRepository().replaceIdeaTags(updated.id(), selectedTags);
-                    var when1 = dlg.getReminderEpochOrNull();
-                    var rRepo = new de.kassel.db.ReminderRepository();
-                    if (when1 != null) {
-                        rRepo.upsertForIdea(updated.id(), when1, updated.title());
-                    } else {
-                        // Wenn Felder leer: Erinnerung entfernen (optional)
-                        rRepo.deleteForIdea(updated.id());
+
+                    // 4) Attachments verarbeiten
+                    var attRepo = new de.kassel.db.AttachmentRepository();
+
+                    // 4a) zuerst löschen (nur bestehende IDs)
+                    for (Long idToDel : dlg.getDeletedAttachmentIds()) {
+                        if (idToDel != null) {
+                            attRepo.deleteById(idToDel);
+                        }
                     }
+
+                    // 4b) neue Dateien aus dem Dialog speichern (Repo übernimmt Kopieren & Insert)
+                    for (java.nio.file.Path src : dlg.getNewAttachmentPaths()) {
+                        attRepo.insertFromPath(updated.id(), src);
+                    }
+
+                    // 5) UI aktualisieren
                     reload();
                 });
             }
@@ -323,6 +336,7 @@ public class IdeaListController {
                     "Fehler beim Öffnen des Bearbeiten-Dialogs: " + ex.getMessage()).showAndWait();
         }
     }
+
 
     /** Verträgt beide Varianten von findById: Optional<Idea> oder Idea. */
     @SuppressWarnings("unused")

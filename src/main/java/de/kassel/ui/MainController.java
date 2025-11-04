@@ -4,6 +4,9 @@ import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.collections.ListChangeListener;
+import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Pos;
@@ -16,7 +19,11 @@ import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import java.util.*;
 import javafx.scene.layout.Region;
-
+import java.time.*;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.Objects;
 
 import de.kassel.settings.SettingsStore;
@@ -187,17 +194,23 @@ public class MainController {
                     var ideaRepo = new de.kassel.db.IdeaRepository();
                     long newId = ideaRepo.insert(idea);
 
-                    // 2) Tags übernehmen
+// 2) Tags übernehmen
                     var selectedTags = dlg.getSelectedTagNames();
                     new de.kassel.db.TagRepository().replaceIdeaTags(newId, selectedTags);
 
-                    // 3) Reminder übernehmen (falls gesetzt)
+// 3) Reminder (optional)
                     var when = dlg.getReminderEpochOrNull();
                     if (when != null) {
                         new de.kassel.db.ReminderRepository()
                                 .upsertForIdea(newId, when, /* note: */ idea.title());
-                        refreshReminders();
                     }
+
+// 4) NEUE Attachments aus dem Dialog übernehmen
+                    var atRepo = new de.kassel.db.AttachmentRepository();
+                    for (var p : dlg.getNewAttachmentPaths()) {
+                        atRepo.insertFromPath(newId, p);
+                    }
+
 
                     // 4) UI-Feedback + Refresh (Status-Ansicht beibehalten)
                     statusLabel.setText("Idee gespeichert: " + idea.title());
@@ -294,56 +307,69 @@ public class MainController {
         }
     }
 
+    private String formatDue(long epochSeconds) {
+        var zdt = Instant.ofEpochSecond(epochSeconds).atZone(ZoneId.systemDefault());
+        var fmt = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+                .withLocale(Locale.getDefault());
+        return zdt.format(fmt);
+    }
+
     private void setupReminderCells() {
         reminderList.setCellFactory(lv -> new ListCell<>() {
-            // Links: Text (Titel + Termin)
-            private final Label info = new Label();
-
-            // Rechts: Buttons
+            private final Label titleLbl = new Label();
+            private final Label dueLbl   = new Label();
             private final Button openBtn   = new Button("Öffnen");
-            private final Button snoozeBtn = new Button("Snooze 10m");
+            private final Button snoozeBtn = new Button("Snooze");
             private final Button doneBtn   = new Button("Erledigt");
-
-            // Flex-Spacer dazwischen
             private final Region spacer = new Region();
-
-            // Gesamte Zeile
-            private final HBox box = new HBox(8);
+            private final HBox box = new HBox(10);
 
             {
+                // „Zwei Spalten“-Gefühl: Titel links wächst, Fälligkeitsdatum rechts,
+                // danach die Buttons.
                 HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-                box.getChildren().addAll(info, spacer, openBtn, snoozeBtn, doneBtn);
+                // optional leichtes Styling
+                dueLbl.setStyle("-fx-opacity:0.8;");
+
+                box.getChildren().addAll(titleLbl, spacer, dueLbl, openBtn, snoozeBtn, doneBtn);
             }
 
-            @Override
-            protected void updateItem(ReminderRow item, boolean empty) {
+            @Override protected void updateItem(ReminderRow item, boolean empty) {
                 super.updateItem(item, empty);
                 if (empty || item == null) {
+                    setText(null);
                     setGraphic(null);
                     return;
                 }
 
-                // Datum/Zeit hübsch formatieren
-                var due = java.time.Instant.ofEpochSecond(item.dueAt)
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toLocalDateTime();
-                String dueStr = due.toString().replace('T', ' ');
+                titleLbl.setText(item.title);
+                // Fälligkeitsdatum formatiert + farblich markieren
+                long now = System.currentTimeMillis() / 1000L;
+                long diff = item.dueAt - now; // Sekunden-Differenz
 
-                // Text für links
-                info.setText(item.title + "  (" + dueStr + ")");
+                dueLbl.setText(formatDue(item.dueAt));
+
+                if (diff < 0) {
+                    // überfällig
+                    dueLbl.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+                } else if (diff < 24 * 3600) {
+                    // innerhalb des nächten Tages
+                    dueLbl.setStyle("-fx-text-fill: darkorange; -fx-font-weight: bold;");
+                } else {
+                    // normal
+                    dueLbl.setStyle("-fx-text-fill: -fx-text-inner-color; -fx-opacity: 0.8;");
+                }
+                setText(null);
                 setGraphic(box);
 
-                // Aktionen
                 openBtn.setOnAction(e -> {
                     navList.getSelectionModel().select("Alle Ideen");
-                    // Liste neu laden – optional könntest du danach die konkrete Zeile selektieren
                     loadIdeaListForStatus("all");
                     statusLabel.setText("Geöffnet: " + item.title);
                 });
 
                 snoozeBtn.setOnAction(e -> {
-                    int mins = (settings != null) ? settings.defaultSnoozeMinutes() : 10;
-                    new de.kassel.db.ReminderRepository().snooze(item.id, mins);
+                    new de.kassel.db.ReminderRepository().snooze(item.id, 10);
                     refreshReminders();
                 });
 
@@ -358,7 +384,7 @@ public class MainController {
 
     private void refreshReminders() {
         long now = System.currentTimeMillis() / 1000L;
-        long horizon = 30 * 60; // 30 Minuten Vorschau
+        long horizon = 3* 24 * 60 * 60; // 30 Minuten Vorschau
 
         var repo = new de.kassel.db.ReminderRepository();
         var due = repo.findDueOrUpcoming(now, horizon); // List<Reminder>
@@ -374,6 +400,7 @@ public class MainController {
         }
 
         reminderList.getItems().setAll(rows);
+        reminderList.getItems().sort(Comparator.comparingLong(r -> r.dueAt));
 
     }
 

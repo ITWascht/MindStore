@@ -3,6 +3,7 @@ module de.kassel.mindstore {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.management;
+    requires java.desktop;
 
     opens de.kassel.ui to javafx.fxml; // FXML-Controller
     exports de.kassel.ui;
