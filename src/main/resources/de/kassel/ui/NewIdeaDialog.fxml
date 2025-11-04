@@ -7,8 +7,11 @@
             fx:controller="de.kassel.ui.NewIdeaDialogController"
             prefWidth="520">
     <content>
-        <GridPane hgap="10" vgap="10">
-            <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+        <GridPane hgap="10" vgap="5">
+            <padding>
+                <!-- lieber explizit statt topRightBottomLeft -->
+                <Insets top="20" right="20" bottom="20" left="20"/>
+            </padding>
 
             <columnConstraints>
                 <ColumnConstraints minWidth="120" halignment="RIGHT"/>
@@ -29,11 +32,13 @@
 
             <!-- Row 2: Priorität -->
             <Label text="Priorität" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <ComboBox fx:id="priorityBox" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+            <ComboBox fx:id="priorityBox"
+                      GridPane.rowIndex="2" GridPane.columnIndex="1"/>
 
             <!-- Row 3: Status -->
             <Label text="Status" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-            <ComboBox fx:id="statusBox" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+            <ComboBox fx:id="statusBox"
+                      GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
             <!-- Row 4: Aufwand -->
             <Label text="Aufwand (min)" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
@@ -42,7 +47,7 @@
 
             <!-- Row 5: Tags -->
             <Label text="Tags" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
-            <ListView fx:id="tagsList" prefHeight="180"
+            <ListView fx:id="tagsList" prefHeight="180.0"
                       GridPane.rowIndex="5" GridPane.columnIndex="1"
                       GridPane.vgrow="ALWAYS"/>
 
@@ -52,10 +57,10 @@
                 <Button text="Hinzufügen" onAction="#onAddTag"/>
             </HBox>
 
-            <!-- Row 7-8: Anhänge -->
+            <!-- Anhänge -->
             <Label text="Anhänge" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
             <VBox spacing="6" GridPane.rowIndex="7" GridPane.columnIndex="1">
-                <ListView fx:id="attachmentsList" prefHeight="120" VBox.vgrow="ALWAYS"/>
+                <ListView fx:id="attachmentsList" prefHeight="120"/>
                 <HBox spacing="8">
                     <Button text="Hinzufügen…" onAction="#onAddAttachment"/>
                     <Button text="Entfernen"    onAction="#onRemoveAttachment"/>
@@ -63,19 +68,21 @@
                 </HBox>
             </VBox>
 
-            <!-- Row 9-10: Erinnerung -->
-            <Label text="Erinnerung" GridPane.rowIndex="9" GridPane.columnIndex="0"/>
-            <HBox spacing="8" GridPane.rowIndex="9" GridPane.columnIndex="1">
+            <!-- Row 7-8: Erinnerung -->
+            <Label text="Erinnerung" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
+            <HBox spacing="8" GridPane.rowIndex="8" GridPane.columnIndex="1">
                 <DatePicker fx:id="reminderDate"/>
                 <TextField fx:id="reminderTime" promptText="HH:mm" prefWidth="70"/>
             </HBox>
+
             <Label text="(optional • z. B. heute 16:00)"
                    style="-fx-opacity:0.6; -fx-font-size:11;"
-                   GridPane.rowIndex="10" GridPane.columnIndex="1"/>
+                   GridPane.rowIndex="8" GridPane.columnIndex="1"/>
 
-            <!-- Row 11: Fehlermeldung -->
+
+            <!-- Row 9: Fehlermeldung -->
             <Label fx:id="errorLabel" textFill="red"
-                   GridPane.rowIndex="11" GridPane.columnIndex="1"/>
+                   GridPane.rowIndex="9" GridPane.columnIndex="1"/>
         </GridPane>
     </content>
 </DialogPane>
