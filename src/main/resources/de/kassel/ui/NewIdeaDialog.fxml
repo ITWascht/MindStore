@@ -70,7 +70,7 @@
 
             <!-- Row 7-8: Erinnerung -->
             <Label text="Erinnerung" GridPane.rowIndex="8" GridPane.columnIndex="0"/>
-            <HBox spacing="8" GridPane.rowIndex="8" GridPane.columnIndex="1">
+            <HBox spacing="8" GridPane.rowIndex="9" GridPane.columnIndex="1">
                 <DatePicker fx:id="reminderDate"/>
                 <TextField fx:id="reminderTime" promptText="HH:mm" prefWidth="70"/>
             </HBox>

@@ -1,0 +1,15 @@
+<component name="ArtifactManager">
+  <artifact type="jar" build-on-make="true" name="MindStore.main:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/MindStore_main_jar</output-path>
+    <root id="archive" name="MindStore.main.jar">
+      <element id="module-output" name="MindStore.main" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openjfx/javafx-fxml/24/5532187f0e082f351b250f198df3dabdc3b5d8ac/javafx-fxml-24-win.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openjfx/javafx-graphics/24/bd6af15d47d15f3c8b1ed6feb404c22865d17161/javafx-graphics-24-win.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openjfx/javafx-controls/24/a483be72c28ee64cf2a6112a8b4707421f67733b/javafx-controls-24-win.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.openjfx/javafx-base/24/c843bfdf43a9b6285eff252d268f84adc2bdea71/javafx-base-24-win.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-simple/2.0.16/56d3d8e59293543780ad35af4ee4a5d9c111a588/slf4j-simple-2.0.16.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.xerial/sqlite-jdbc/3.46.0.1/87d40ab74e922a0e672ed782fa73f51a358e81f6/sqlite-jdbc-3.46.0.1.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$USER_HOME$/.gradle/caches/modules-2/files-2.1/org.slf4j/slf4j-api/2.0.16/172931663a09a1fa515567af5fbef00897d3c04/slf4j-api-2.0.16.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

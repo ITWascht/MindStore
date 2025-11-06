@@ -15,6 +15,8 @@ import java.util.Objects;
 public class MainApp extends Application {
     @Override
     public void start(Stage stage) throws Exception {
+        //de.kassel.db.DbManager.initIfNeeded(); // falls du diese Methode schon hast – ansonsten optional
+
         // DB initialisieren + Diagnose
         try (var c = DbManager.getConnection()) {
             System.out.println("SQLite URL = " + c.getMetaData().getURL());

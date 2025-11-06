@@ -1,0 +1,8 @@
+<?xml version="1.0" ?>
+<jpackage-state version="24.0.2" platform="windows">
+  <app-version>1.0</app-version>
+  <main-launcher>MindStore</main-launcher>
+  <main-class>de.kassel.ui.MainApp</main-class>
+  <signed>false</signed>
+  <app-store>false</app-store>
+  <add-launcher name="MindStoreCP" shortcut="true" menu="true" service="false"></add-launcher></jpackage-state>

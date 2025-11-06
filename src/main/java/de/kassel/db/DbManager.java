@@ -5,13 +5,59 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.stream.Collectors;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.IOException;
 
 public class DbManager {
+
+    // --- Added by packaging helper: ensure SQLite driver & DB directory ---
+    private static final String APP_DIR_NAME__MS = ".mindstore";
+    private static final String DB_FILE_NAME__MS = "mindstore.db";
+
+    private static java.nio.file.Path dbDir__ms() {
+        return java.nio.file.Paths.get(System.getProperty("user.home"), APP_DIR_NAME__MS);
+    }
+    private static java.nio.file.Path dbPath__ms() {
+        return dbDir__ms().resolve(DB_FILE_NAME__MS);
+    }
+    /** Returns a canonical JDBC url for the packaged app. */
+    public static String jdbcUrl__ms() {
+        return "jdbc:sqlite:" + dbPath__ms().toString();
+    }
+    /** Ensures ~/.mindstore exists. */
+    private static void ensureDbDir__ms() {
+        try {
+            java.nio.file.Files.createDirectories(dbDir__ms());
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("Konnte DB-Verzeichnis nicht anlegen: " + dbDir__ms(), e);
+        }
+    }
+    static {
+        // Ensure DB directory exists early
+        try {
+            ensureDbDir__ms();
+        } catch (RuntimeException ex) {
+            System.err.println("[MindStore] DB-Verzeichnis-Init fehlgeschlagen: " + ex.getMessage());
+            throw ex;
+        }
+        // Ensure SQLite JDBC driver is registered (robust for jlink/jpackage)
+        try {
+            Class.forName("org.sqlite.JDBC");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("SQLite JDBC-Treiber nicht gefunden. Abhängigkeit 'org.xerial:sqlite-jdbc' fehlt im Paket?", e);
+        }
+    }
+// --- end added ---
+
     private static final String APP_DIR = System.getProperty("user.home") + "/.mindstore";
     private static final String DB_URL  = "jdbc:sqlite:" + APP_DIR + "/mindstore.db";
     private static volatile boolean initialized = false;
 
     private DbManager() {}
+
+
 
     public static Connection getConnection() throws SQLException {
         new java.io.File(APP_DIR).mkdirs();
